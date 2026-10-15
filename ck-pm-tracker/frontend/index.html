@@ -1,0 +1,501 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Cartesian Kinetics — PM Tracker</title>
+<script>
+  window.tailwind = window.tailwind || {};
+</script>
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  tailwind.config = { theme: { extend: { colors: {
+    bg:"rgb(var(--bg)/<alpha-value>)", surface:"rgb(var(--surface)/<alpha-value>)", surface2:"rgb(var(--surface2)/<alpha-value>)",
+    line:"rgb(var(--line)/<alpha-value>)", ink:"rgb(var(--ink)/<alpha-value>)", muted:"rgb(var(--muted)/<alpha-value>)", sub:"rgb(var(--sub)/<alpha-value>)",
+    brand:"rgb(var(--brand)/<alpha-value>)", brandink:"rgb(var(--brandink)/<alpha-value>)",
+    done:"rgb(var(--done)/<alpha-value>)", flag:"rgb(var(--flag)/<alpha-value>)", over:"rgb(var(--over)/<alpha-value>)",
+  }, fontFamily: { sans: ['"Helvetica Neue"','Helvetica','Arial','sans-serif'] } } } };
+</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/preact/10.22.1/preact.umd.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/preact/10.22.1/hooks.umd.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/htm/3.1.1/htm.umd.js"></script>
+<style>
+  :root{
+    --bg:11 14 17; --surface:21 25 30; --surface2:30 36 43; --line:42 49 58;
+    --ink:232 236 240; --muted:138 148 162; --sub:199 206 214;
+    --brand:0 216 120; --brandink:4 17 10; --done:18 179 201; --flag:245 166 35; --over:229 72 77;
+  }
+  :root[data-theme="light"]{
+    --bg:255 255 255; --surface:244 246 248; --surface2:255 255 255; --line:226 230 234;
+    --ink:11 14 17; --muted:91 99 110; --sub:57 65 75;
+    --brand:0 200 110; --brandink:255 255 255; --done:14 154 173; --flag:199 127 10; --over:210 59 64;
+  }
+  html,body{ background:rgb(var(--bg)); color:rgb(var(--ink)); font-family:"Helvetica Neue",Helvetica,Arial,sans-serif; -webkit-tap-highlight-color:transparent; }
+  *{ -webkit-text-size-adjust:100%; }
+  input,textarea,select,button{ font:inherit; }
+  input,textarea,select{ background:rgb(var(--surface2)); color:rgb(var(--ink)); }
+  input::placeholder,textarea::placeholder{ color:rgb(var(--muted)); }
+  input[type=checkbox]{ accent-color:rgb(var(--brand)); width:16px; height:16px; }
+  .no-spin::-webkit-outer-spin-button,.no-spin::-webkit-inner-spin-button{-webkit-appearance:none;margin:0;}
+</style>
+</head>
+<body>
+<div id="app" class="min-h-screen"></div>
+<div id="fallback" class="min-h-screen flex items-center justify-center text-muted">Loading…</div>
+<script>
+const { h, render } = preact;
+const { useState, useEffect, useMemo } = preactHooks;
+const html = htm.bind(h);
+const CK_LOGO = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAJsAAABuCAYAAAAwPmEmAAAAAXNSR0IArs4c6QAAACBjSFJNAAB6JgAAgIQAAPoAAACA6AAAdTAAAOpgAAA6mAAAF3CculE8AAAAhGVYSWZNTQAqAAAACAAFARIAAwAAAAEAAQAAARoABQAAAAEAAABKARsABQAAAAEAAABSASgAAwAAAAEAAgAAh2kABAAAAAEAAABaAAAAAAAAASAAAAABAAABIAAAAAEAA6ABAAMAAAABAAEAAKACAAQAAAABAAAAm6ADAAQAAAABAAAAbgAAAAAotcN4AAAACXBIWXMAACxLAAAsSwGlPZapAAABWWlUWHRYTUw6Y29tLmFkb2JlLnhtcAAAAAAAPHg6eG1wbWV0YSB4bWxuczp4PSJhZG9iZTpuczptZXRhLyIgeDp4bXB0az0iWE1QIENvcmUgNi4wLjAiPgogICA8cmRmOlJERiB4bWxuczpyZGY9Imh0dHA6Ly93d3cudzMub3JnLzE5OTkvMDIvMjItcmRmLXN5bnRheC1ucyMiPgogICAgICA8cmRmOkRlc2NyaXB0aW9uIHJkZjphYm91dD0iIgogICAgICAgICAgICB4bWxuczp0aWZmPSJodHRwOi8vbnMuYWRvYmUuY29tL3RpZmYvMS4wLyI+CiAgICAgICAgIDx0aWZmOk9yaWVudGF0aW9uPjE8L3RpZmY6T3JpZW50YXRpb24+CiAgICAgIDwvcmRmOkRlc2NyaXB0aW9uPgogICA8L3JkZjpSREY+CjwveDp4bXBtZXRhPgoZXuEHAAAP6klEQVR4Ae1dCWxcxRn+563t+AiUKzSlUO+ubaigQAv0RFRAiyilqlAFhRaVm9Dcl491EpLNYXt9xsHhSEIgDU2BIEQFpVUL5RZQLqktKYRg7zpG4XQgp6/dN/1mwzqWvc+7+/YdE++MZO3zHP/875vvzcyb+d8/RCooBBQCCgGFgEJAIaAQUAjIjgAbo2A48DHiSogRH5OW6xGcioDLOxTz3EhldW9IBwcPatQ9cAVabhkRL4euuis6ctRMVEiMP0aewevolNV9Qo+8JMqUIK5EUS0JMsQPks7WkL/uzWSprseFB65FM7eDaMfFdXG1u2CvEelLE0QT+mhjAFI92hhIDkWwIaLYCvIV3ocGdbUZkyoYqfktabxtmGhJMzkVCaLp9DvyNr0zssaxZBuZqq4TCMSI8ybq3dtGLOjO0JTQJNlvV/WVxFk7HoETkiU7G8e2UYzdTGUN742uN9kwOjpPrv+voyerp97dK+m89ejdJAudVb8gxu6AVlMk0KwHOsyk8vq3k+miyJYMleE4zHM5X03RA3VSEq07cC7p+l1E7GvDKrt2wT8FVgvI3/S8kQqKbEbIgGbo0e6kougymtoxYJzNpZSdi75FMX0tpt2nuKTB4Wo5/wJEqwHRHj0cOfZKzdnGYpKIeYKGaAVNbTmQiJDmd2dVGXq0NdDnB+7rBKLpFCB/eHOqFyfVsyVrLcafxpvnPKpo+TRZsqtxPYFyijIMnfxiV/U4VHkfca0SLwNpvaGrnm10i3F6kZg2l7wt4dFJrv/ftbgU63wYOvklrutCbBBD5yrypUc0oa8i28hW4/QS3uymUWnD/0ZGS3G9K3gCaXo76fxS9/VhnHi0g3xFoVRD50hd1TAaRyO+a/cmxeg2qmh4dyRAUlxvCxbQ0OBK9GhXSKEPxTZTrH8FseaM1hwV2eKtF+shXZtOFSH5ejShX3FfAMPnbXIQjW2lfM9C8nXszVQfNYwS/wRDwiwqC72eKXiO5I/ULMI6Gv4wYLkfHqYozaKTG3rNqJLbPRtj+zE0zSdf2+NmwLO9TCSwGKt9t6OeSbbXlaoCTk9SAZuJFwJTRBPic7ln2weizaXSoodS4exKeldllTREYwxLQdrNZnu0BH652rPtAQDzqDT0h0zephKg2for9i0iCzE/y4NNmgQ9GtE2jODYHagXdo5ZhRwkG8NCJF9C/tCmrJCzq3B3AG+cDETjwq7Q5cDD6F1nkK/+LSsUybVhdAhEawDRsDAqYQgHLkTjCpu0qe5rxzrxBjyN/I0vWKVLbvVsjNbBWrnZKvAsldNdez4ehA6QzWupXHPCdhKPTaeyJszVrAu5Qzad/QlmykuoLNhvHXwWSQrXfh+92b0g2jctkpiFGL4La44zQbSnshCStOjEH0aFATenLbBMmEdljeLFQK7QU3MmFFwP/SQgGoOFC1uMjfW/2AFSLvRsWyh/YA75V++2A8CsZG7Hfmes/x7IOCsrOZYU5gNY3F5O3ZP/aIm4JEImNtnEQqSmVeELH/mI1h04lvSBdeh1f5SkXZyNYtgXIK2ZDhatoYuCuLYnuEw2BhLwD7+8NQu3YzB2cv4mPlQM0DdCCfn2IGhG6rbgZNL7WlH0V2aKW1wGb+islXp7V9ht+u4m2WKwNr2X/F1i348ocka+ZSD27orZDZxpXQXRivs7MDe63rQM6woKq402bEHVWifSWJKbZNPxRO0n9kjskHqJX2Nlj/iUbTMmU8nB1cQ9N4i3FpcDFNDWk7feEaKJe3WTbHi4c2hvVtikFR9YAaLdIgHRBPZbqKBgoZPbdRN/6cPl7iNevdjvLBqci2d7lgzqQJunsWhbRScFDzqpj7s9m5N36mZd3YEb4WQFpkLcunmp2fuJ0at4ecLHPM0fmRVhtpzq2cwil265nYHfIGsjiHZUukVsy8fpFczTbqWKRlhyOB8U2ezEXBBNpzvwLnCCndWkJVsQTdemGblGSEtGlpkU2bIE0LB4d+AqEE0SZy/aO/gqq9JNogmc1JzNkC1ZJBwyFWpCj3ZiFlKsKvoh8aF5VN78slUCzcpRPZtZ5IzKddeeDpKJHs1rlMXB+D3Y75xH/uZ/OFinYVWKbIbQmEjorPkGvj1dj6WFs02UtriIcPbCqsjfstViwabFKbKZhm5UQeEaQaNNWOI4f1SKC/+CaAw+OPwNG1yo3LBKRTZDaDJICAe8xKL3Y1n+ogxK2ZUVxqHaIvI2bLSrArNyFdnMIpcot2P2FFgA3y0J0WDBoS0l7/vrE+rJ9KvIlk1rCJu0vCIYP2o/y0aMZWUZu4d2f9Z+2LjBMsmWCFJkMwvjrmAx1tGwBaXJYJOGjpUeIN63VFrTKuCsyGaGbMKCY3AwgKJzzBS3uAzcVxF8cEQrydf+hcWyLRWnyJYpnIJoR/VVYp5WjaKeTItbnp/TVriCn03lLZ9YLttigYpsmQDKr/LQ5L4FaNxl6E0mZVLUlrycHic9Ogc+5eRzx5rkhhXZkoBiGBX234SF0sVILzDM41QCZy+S7pl1JPRoCUjU3mgCiVS/nbV4EdBD6NEmp8pqf3oMTgtjGDrbxCEXR0xQZEunqbpqfkwaDkjj7Lh0stubh3UR16eTv+3f9tZjvXQ1jKbCVLhG0NhGNPDJqbLanw5nLzz2e/K3vmB/XdbXoMg2HqaR2h/CwnYzhs7y8bI5l6bvgQFk2Ln6rK1Jkc0Iz3DVt0GyTUg+1SiL8/HsbCy2tNKOagl62czvXpEtGWbhhcLJCzayuUREiyuKdT3+S8rzNNOOWuzJHllBkW10e70fhHVt/mqs154zOkmO/4WXCn4N5fNW2r7Q/W8bMgBFkW0kWGJjXRtoQ5QcG+sjdRt9zXFScUF+K31UKYE71NHKJf9fkS2BSzh4DAwfm/F3bSLqCPi9jvry6mjHbPd3M9IAS5FNgNRZ8xXS+pvjx02nAZpUWTjNJU/hQql0MlBGkU30Ch7sdep0swFGckeLKRyDZW5X1Wy5Fc11E6Nng3nkKa7CN5UzRZPJ3ljG+rESYp5VFK693jiP+ym527MJZy+l/TegV1iMYx/d31jPngtHY++2XWbC5SbZ4qeo1FwNuuHNkxdm386ySGDHQJN26qr8NRakpeupc5NskcA1mEHciYZx39mL5TzleKv2dFB35c8tF52lwNwjW7gGRON34U8CC44sW8+wODuReF4TdVafZ5jFhYTcIltkAZ520aPFhxsX4Ha0ytPhKX0jdVWf5mit41SWO2SLb6znw3HyRO7RxrT0WXgB2iAL4XKDbF2LAHoeXBEw/5jmmPgRF8hCuIlPtp5AObEYvApxqeYvDnP8Ajxoa0n4I3ExTGyy9VRVUJThZUAKHxwuNjOq1thPielt1LXoq24pMnHJJtxXRT1rMEe7xC1wpaqXC224+GhnKYmDP1wIE5NsPcHj4hatRJe5gKncVTI+g4r7bqdw0PHF7IlHtp75RRQdwEfE7Eq5W90t7eI799XE+hehh3N0m85dsuk0aDnkQ4VLIFMGHxyJW4vh4mDiH2l+OZzilPQLrBwLY/fPIoF9jnyIK44djPGH0APdj108jTRu3m8G5zjwS2N447wM5kKzoL8s38PuwzypCvd4NO4RZyHIt19JbHAheduEdbLtwT2yiVtjtB92ZHvjV9k1hDhdLg/y8P2ARIFr1eSvbybhIyRSgSMfdRwpJF3ox0OKw38bsQ5pb3C3BxCuDJgM7gzsAJlvovy+tXHJ4uTBbcElVDwEM6Dojdk9V5brWggTqzqKBD4jb+gxy6WPEOjunG2EIhPqktMTOH0vgBOc+4bv64zgformz0PDPjAcJ8/FFEw9VlM4YOuHPopslja4mJXw7ei9lmD4/HiM6IrgXsxTYb7NHh6T5n6E2F24Az3cxXaposhmLbLd+DoLTl9a/mMotqxxD16NBOH+bJjHvYQK9HB3o4e70A4VFNksQ5XtwRA5nbxNz6YUKZz3RWka5qsvpczrfIZTcR+t6OG+Y3XVimxWICqWcRhfiSOw/5a2OEE4XZsJwr2ddhmnMnJ+DqraQJFKn5VVKrJliyZnWC9kLVRQiLMQMgz+egy3nttQakeGJe3Pzvm5eBg6rNy4V2TLttk0/iBpk5abPgLbW/cy5m+3Qo13s1XF2vJ42WHa5aTFOrCPKj6kyToosmUH4StwzldNvmB/VmJ8Dc+j/HT8dWUlx47CnF1FvH9t3GtAlvIV2UwDyN7Co38T+Sw6a90Xeg7eLedjNf8D0yrZVZDRtXE3r1k6sVFkM9VA/FOQopZ8DdYOfb6mJ0grWAaV9phSy95CcGLDW2jbDNO2cIpsmTYQp32kswD5Qk9lWjRlfpgSkHflfdjmXY68slmKYBKXN42KS6rojWn5Ke8lSQZFtiSgjBMVQ48WJH/hJixZxG1fx8lrPsm3Cs4I9SYIsN4Ey7xWKMnAF081HX/sDNw9yJdZUGTLBC+OzfWS2DpiQWFlYm/wNS1Hg65CJUP2VpSxdFj44pjJSO0NmZZUZEsXMUaPUIFWQ1NbDqRbJOt8/tBKNKwjtmaZ6Rr/9rYlUyc2imwpUcZoKbaVotFZdHJDb8rsVmeYVLACoxc+rs541LJak1HyBOHg1zccuHpUguG/imyG0HyZwOk9WNpWunZG1EnBg/gED99U8EdTqepC+vGos50iiy5Pp25FtvFQ4uwDdChzsMTxr/Gy2Z5WGvoch6LNRz3p773artRwBVPxIKyBi4fvDccYXCiyGQCDIaKfWLSefI1/N8ziZEJ5XQ/pMWFW/oyT1aZXFy+DpYjYZThzvPyKbMnQEVYcxFaTN7I+WbJrcWXNO7DLMAP1P+eaDoYVs+9il+FO6lpi6DVJkS0ZeDpbR727l5H4dkC24G/aTlybi3nka7KpBn3gxCa2gToXnJpMN0W20ahw/k/0aivpvPWyrW8d1lSYJnE+C3rKt3EfJ1zeXdQz/+uHFT50pcg2jAiWFji9ir/5Sb8fGM4nyUVZ6HXMk+aAcJ9IotGXaoilIs9P4GdlIwiH5ZHDQZFtGAu+E1sxc6ms8b/DUbJfeOufxKIvCMe/kEtVsZOXfynFCkIjjztSZDvUSnvRYDXkr5NxHjQ+j3x1D6OHw5BKn4+f0elUEI6zW6g/vyHhU0SRjbH9WEurJW/RVqebw7L6vKEtkLVAvh5ObHvgazPhUwQHnLj7RbxlaJsWFMPpLuvI14nN9Ufs31w3rWYaBb2FmykyhE1yYS3Cj0qjhDNZDvldqabSAc/YDbdwQJg4HxGnvGWJlo6XgQfhx202iRX6iRCE2U8Eh4kQWwHCTcGvaF88RExMolwMXOixLxnZ/gqVT0FDuKygndjE2+AZGoyuotNaP7OzJldkC8+SJdEpxIaKaZDvgbXKAZyjOratnVSOFbpbv5P3qupSCCgEFAIKAYWAQkAhoBBQCCgEUiPwf+39P6ia4WLpAAAAAElFTkSuQmCC";
+
+const API_BASE = "https://prevmaint.onrender.com/api";
+
+/* ---------------- API client (live backend) ------------------------------- */
+async function apiFetch(path, opts) {
+  opts = opts || {};
+  const res = await fetch(API_BASE + path, { method: opts.method || "GET", headers: { "Content-Type": "application/json" }, body: opts.body });
+  if (!res.ok) { let msg = "HTTP " + res.status; try { const j = await res.json(); if (j && j.error) msg = j.error; } catch (e) {} throw new Error(msg); }
+  if (res.status === 204) return null;
+  return res.json();
+}
+const api = {
+  listSites: () => apiFetch("/installations"),
+  getSite: (id) => apiFetch("/installations/" + id),
+  createSite: (b) => apiFetch("/installations", { method: "POST", body: JSON.stringify(b) }),
+  deleteSite: (id) => apiFetch("/installations/" + id, { method: "DELETE" }),
+  listAssets: (id) => apiFetch("/installations/" + id + "/assets"),
+  createAsset: (id, b) => apiFetch("/installations/" + id + "/assets", { method: "POST", body: JSON.stringify(b) }),
+  deleteAsset: (a, b) => apiFetch("/assets/" + (b || a), { method: "DELETE" }),
+  getChecklists: () => apiFetch("/checklists"),
+  updateChecklistDefault: (t, url) => apiFetch("/checklists/" + t, { method: "PATCH", body: JSON.stringify({ defaultSopUrl: url }) }),
+  updatePm: (t, key, b) => apiFetch("/pm-definitions/" + t + "/" + key, { method: "PATCH", body: JSON.stringify(b) }),
+  getDue: (id) => apiFetch("/installations/" + id + "/due"),
+  submitReport: (id, b) => apiFetch("/installations/" + id + "/reports", { method: "POST", body: JSON.stringify(b) }),
+  listReports: (id) => apiFetch("/installations/" + id + "/reports"),
+  getReport: (id) => apiFetch("/reports/" + id),
+  getSiteChecklists: (id) => apiFetch("/installations/" + id + "/checklists"),
+  addSitePm: (id, type, b) => apiFetch("/installations/" + id + "/pm-items/" + type, { method: "POST", body: JSON.stringify(b) }),
+  updateSitePm: (id, type, key, b) => apiFetch("/installations/" + id + "/pm-items/" + type + "/" + key, { method: "PATCH", body: JSON.stringify(b) }),
+  deleteSitePm: (id, type, key) => apiFetch("/installations/" + id + "/pm-items/" + type + "/" + key, { method: "DELETE" }),
+  resetSiteChecklist: (id, type) => apiFetch("/installations/" + id + "/checklists/" + type + "/reset", { method: "POST" }),
+};
+
+/* ---------------- helpers + atoms ----------------------------------------- */
+const todayISO = () => new Date().toISOString().slice(0, 10);
+const fmt = (s) => s ? new Date(String(s).slice(0,10)+"T00:00:00").toLocaleDateString(undefined,{month:"short",day:"numeric",year:"numeric"}) : "—";
+const TZS = ["America/Los_Angeles","America/Denver","America/Chicago","America/New_York","America/Phoenix","America/Anchorage","Pacific/Honolulu"];
+const toneChip = { red:"bg-over/20 text-over", over:"bg-over/20 text-over", amber:"bg-flag/20 text-flag", done:"bg-done/20 text-done", muted:"bg-muted/20 text-sub" };
+const btn = "rounded-lg px-4 py-2 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-brand";
+const primary = btn + " bg-brand text-brandink hover:brightness-110 disabled:opacity-40";
+const ghost = btn + " border border-line bg-surface2 text-ink hover:bg-surface";
+const field = "w-full rounded-lg border border-line bg-surface2 text-ink px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand";
+const lbl = "mb-1 block text-xs font-medium text-muted";
+
+const I = {
+  settings:"M12 15a3 3 0 100-6 3 3 0 000 6z M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 11-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 110-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 114 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 112.83 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 110 4h-.09a1.65 1.65 0 00-1.51 1z",
+  clipboard:"M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2 M9 5a2 2 0 002 2h2a2 2 0 002-2 M9 5a2 2 0 012-2h2a2 2 0 012 2 M9 12l2 2 4-4",
+  plus:"M12 5v14 M5 12h14", x:"M18 6L6 18 M6 6l12 12", check:"M20 6L9 17l-5-5",
+  camera:"M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z M12 17a4 4 0 100-8 4 4 0 000 8z",
+  link:"M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6 M15 3h6v6 M10 14L21 3",
+  chevR:"M9 18l6-6-6-6", chevD:"M6 9l6 6 6-6",
+  trash:"M3 6h18 M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2",
+  bot:"M12 8V4H8 M4 8h16a2 2 0 012 2v8a2 2 0 01-2 2H4a2 2 0 01-2-2v-8a2 2 0 012-2z M2 14h2 M20 14h2 M9 13v2 M15 13v2",
+  lift:"M4 4h16v16H4z M9 4v16 M4 9h5 M4 14h5",
+  layers:"M12 2L2 7l10 5 10-5-10-5z M2 17l10 5 10-5 M2 12l10 5 10-5",
+  history:"M3 3v5h5 M3.05 13A9 9 0 106 5.3L3 8 M12 7v5l4 2",
+  arrow:"M12 5v14 M19 12l-7 7-7-7",
+  map:"M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 1118 0z M12 13a3 3 0 100-6 3 3 0 000 6z",
+  sun:"M12 1v2 M12 21v2 M4.2 4.2l1.4 1.4 M18.4 18.4l1.4 1.4 M1 12h2 M21 12h2 M4.2 19.8l1.4-1.4 M18.4 5.6l1.4-1.4 M12 8a4 4 0 100 8 4 4 0 000-8z",
+  moon:"M21 12.8A9 9 0 1111.2 3a7 7 0 009.8 9.8z",
+};
+const Icon = ({ n, s=18, c="", stroke=2 }) => html`<svg width=${s} height=${s} viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width=${stroke} stroke-linecap="round" stroke-linejoin="round" class=${c} aria-hidden="true">${I[n].split(" M").map((p,i)=>html`<path d=${(i?"M":"")+p} />`)}</svg>`;
+
+function useAsync(fn, deps) {
+  const [st, setSt] = useState({ loading:true, error:null, data:null });
+  const run = () => { setSt((s)=>({ ...s, loading:true, error:null })); Promise.resolve().then(fn).then((d)=>setSt({loading:false,error:null,data:d}),(e)=>setSt({loading:false,error:String(e.message||e),data:null})); };
+  useEffect(run, deps||[]);
+  return { ...st, reload:run };
+}
+function Loading({ what }) {
+  const [slow, setSlow] = useState(false);
+  useEffect(() => { const t = setTimeout(() => setSlow(true), 4000); return () => clearTimeout(t); }, []);
+  return html`<div class="rounded-xl border border-line bg-surface p-8 text-center text-sm text-muted">${what||"Loading"}…
+    ${slow && html`<div class="mt-2 text-xs text-muted/70">First load after the server has been idle can take up to a minute — hang tight.</div>`}
+  </div>`;
+}
+function ErrorBox({ msg, onRetry }) {
+  return html`<div class="rounded-xl border border-over/40 bg-over/10 p-6 text-center">
+    <p class="text-sm text-over">Couldn’t reach the server (${msg}).</p>
+    <p class="mt-1 text-xs text-over/70">If the server was idle it may still be waking up — wait a moment and retry.</p>
+    ${onRetry && html`<button class=${ghost+" mt-3"} onClick=${onRetry}>Retry</button>`}
+  </div>`;
+}
+function TextField({ label, value, onInput, placeholder, type="text", req }) {
+  return html`<label class="block"><span class=${lbl}>${label} ${req && html`<span class="text-over">*</span>`}</span>
+    <input class=${field+" no-spin"} type=${type} value=${value||""} placeholder=${placeholder||""} onInput=${(e)=>onInput(e.target.value)} /></label>`;
+}
+const Logo = ({ h=24 }) => html`<img src=${CK_LOGO} alt="Cartesian Kinetics" style=${"height:"+h+"px;width:auto;display:block"} />`;
+
+/* ---------------- theme ---------------------------------------------------- */
+function useTheme() {
+  const [theme, setTheme] = useState(() => { try { return localStorage.getItem("ck_theme") || "dark"; } catch { return "dark"; } });
+  useEffect(() => { document.documentElement.setAttribute("data-theme", theme); try { localStorage.setItem("ck_theme", theme); } catch {} }, [theme]);
+  return [theme, () => setTheme((t) => t === "dark" ? "light" : "dark")];
+}
+
+/* ========================================================================= */
+function Root() {
+  const [signedIn, setSignedIn] = useState(false);
+  const [theme, toggleTheme] = useTheme();
+  useEffect(() => { const fb = document.getElementById("fallback"); if (fb) fb.style.display = "none"; }, []);
+  if (!signedIn) return html`<${Landing} theme=${theme} toggleTheme=${toggleTheme} onIn=${() => setSignedIn(true)} />`;
+  return html`<${App} theme=${theme} toggleTheme=${toggleTheme} onOut=${() => setSignedIn(false)} />`;
+}
+
+function Landing({ onIn, theme, toggleTheme }) {
+  return html`<div class="min-h-screen flex flex-col">
+    <div class="flex justify-end p-4"><${ThemeBtn} theme=${theme} toggleTheme=${toggleTheme} /></div>
+    <div class="flex-1 flex items-center justify-center px-6">
+      <div class="w-full max-w-sm text-center">
+        <div class="mx-auto mb-6 flex items-center justify-center"><${Logo} h=52 /></div>
+        <h1 class="text-xl font-semibold">Preventive Maintenance</h1>
+        <p class="mt-1 text-sm text-muted">Cartesian Kinetics · Liftbot fleet</p>
+        <button onClick=${onIn} class=${primary + " mt-8 w-full py-3 flex items-center justify-center gap-2"}>
+          <span class="inline-flex h-5 w-5 items-center justify-center rounded-full bg-brandink/15 text-xs font-bold">G</span> Continue with Google
+        </button>
+        <p class="mt-3 text-xs text-muted">Company Google sign-in — arriving in the next update</p>
+        <p class="mt-6 text-[11px] text-muted/70">Note: sign-in is not yet enforced. Access control ships in the next update.</p>
+      </div>
+    </div>
+  </div>`;
+}
+
+const ThemeBtn = ({ theme, toggleTheme }) => html`<button onClick=${toggleTheme} aria-label="Toggle theme" class="flex items-center gap-1.5 rounded-lg border border-line bg-surface2 px-2.5 py-1.5 text-xs text-sub hover:bg-surface">
+  <${Icon} n=${theme === "dark" ? "sun" : "moon"} s=15/> ${theme === "dark" ? "Light" : "Dark"}
+</button>`;
+
+function App({ theme, toggleTheme, onOut }) {
+  const [role, setRole] = useState("tech");
+  return html`<div class="mx-auto max-w-3xl">
+    <header class="sticky top-0 z-10 border-b border-line bg-surface" style="padding-top:env(safe-area-inset-top,0px)">
+      <div class="flex items-center justify-between px-4 py-3">
+        <div class="flex items-center gap-2.5"><${Logo} h=22 /><span class="text-sm font-semibold tracking-tight">PM Tracker</span></div>
+        <div class="flex items-center gap-1 text-sm">
+          <button onClick=${() => setRole("tech")} class=${"flex items-center gap-1.5 rounded px-3 py-1.5 " + (role==="tech"?"bg-brand/15 text-brand":"text-muted hover:text-sub")}><${Icon} n="clipboard" s=15/> Technician</button>
+          <button onClick=${() => setRole("admin")} class=${"flex items-center gap-1.5 rounded px-3 py-1.5 " + (role==="admin"?"bg-brand/15 text-brand":"text-muted hover:text-sub")}><${Icon} n="settings" s=15/> Admin</button>
+          <${ThemeBtn} theme=${theme} toggleTheme=${toggleTheme} />
+        </div>
+      </div>
+    </header>
+    <main class="px-4 py-5 pb-24">${role==="admin" ? html`<${Admin} />` : html`<${Tech} />`}</main>
+    <footer class="fixed bottom-0 inset-x-0 border-t border-line bg-surface/90 backdrop-blur" style="padding-bottom:env(safe-area-inset-bottom,0px)">
+      <div class="mx-auto max-w-3xl flex items-center justify-between px-4 py-2 text-xs text-muted"><span>Cartesian Kinetics · PM Tracker</span><button onClick=${onOut} class="underline hover:text-sub">Sign out</button></div>
+    </footer>
+  </div>`;
+}
+
+/* ---------------- ADMIN --------------------------------------------------- */
+function Admin() {
+  const [tab, setTab] = useState("sites");
+  const [siteId, setSiteId] = useState(null);
+  return html`<div>
+    <div class="mb-4 flex gap-1 text-sm">
+      <button onClick=${() => { setTab("sites"); setSiteId(null); }} class=${"rounded-lg px-3 py-1.5 font-medium " + (tab==="sites"?"bg-surface2 text-ink":"text-muted hover:bg-surface")}>Sites & assets</button>
+      <button onClick=${() => setTab("checklists")} class=${"rounded-lg px-3 py-1.5 font-medium " + (tab==="checklists"?"bg-surface2 text-ink":"text-muted hover:bg-surface")}>Checklists</button>
+    </div>
+    ${tab==="checklists" ? html`<${ChecklistEditor} />` : siteId ? html`<${SiteDetail} siteId=${siteId} onBack=${() => setSiteId(null)} />` : html`<${SiteList} onOpen=${setSiteId} />`}
+  </div>`;
+}
+
+function SiteList({ onOpen }) {
+  const sites = useAsync(() => api.listSites(), []);
+  const [adding, setAdding] = useState(false);
+  const [f, setF] = useState({ name:"", timezone:"America/Los_Angeles", notes:"", hasLayout:true, calendarId:"" });
+  const add = async () => { if (!f.name.trim()) return; await api.createSite(f); setF({ name:"", timezone:"America/Los_Angeles", notes:"", hasLayout:true, calendarId:"" }); setAdding(false); sites.reload(); };
+  return html`<div>
+    <p class="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted"><${Icon} n="map" s=14/> Locations</p>
+    ${sites.loading ? html`<${Loading} what="Loading locations" />` : sites.error ? html`<${ErrorBox} msg=${sites.error} onRetry=${sites.reload} />` : html`<div class="space-y-2">
+      ${sites.data.map((s) => html`<button key=${s.id} onClick=${() => onOpen(s.id)} class="flex w-full items-center gap-3 rounded-xl border border-line bg-surface px-4 py-3 text-left hover:border-brand/50">
+        <div class="min-w-0 flex-1"><div class="font-medium">${s.name}</div><div class="mt-0.5 text-xs text-muted">${s.bots} bots · ${s.lifts} lifts${s.has_layout?" · layout":""} · ${String(s.timezone).split("/")[1]?String(s.timezone).split("/")[1].replace("_"," "):s.timezone}</div></div>
+        <span class="text-muted"><${Icon} n="chevR" s=18/></span></button>`)}</div>`}
+    ${adding ? html`<div class="mt-3 rounded-xl border border-line bg-surface p-4">
+      <div class="grid gap-3 sm:grid-cols-2">
+        <${TextField} label="Location name" value=${f.name} onInput=${(v)=>setF({...f,name:v})} placeholder="HJI" req=${true}/>
+        <label class="block"><span class=${lbl}>Timezone</span><select class=${field} value=${f.timezone} onChange=${(e)=>setF({...f,timezone:e.target.value})}>${TZS.map((t)=>html`<option value=${t}>${t.replace("America/","").replace("Pacific/","").replace("_"," ")}</option>`)}</select></label>
+      </div>
+      <div class="mt-3"><span class=${lbl}>Extra notes</span><textarea class=${field} rows="2" value=${f.notes} onInput=${(e)=>setF({...f,notes:e.target.value})} placeholder="Access hours, contact, quirks…"></textarea></div>
+      <label class="mt-3 flex items-center gap-2 text-sm"><input type="checkbox" checked=${f.hasLayout} onChange=${(e)=>setF({...f,hasLayout:e.target.checked})}/> Has layout / infrastructure checklist</label>
+      <div class="mt-3 flex gap-2"><button class=${primary} onClick=${add}>Save location</button><button class=${ghost} onClick=${()=>setAdding(false)}>Cancel</button></div>
+    </div>` : html`<button onClick=${()=>setAdding(true)} class="mt-3 flex items-center gap-1.5 rounded-lg border border-dashed border-line bg-surface px-4 py-2.5 text-sm font-medium text-sub hover:border-brand/50"><${Icon} n="plus" s=16/> Add location</button>`}
+  </div>`;
+}
+
+function SiteDetail({ siteId, onBack }) {
+  const site = useAsync(() => api.getSite(siteId), [siteId]);
+  const assets = useAsync(() => api.listAssets(siteId), [siteId]);
+  const [f, setF] = useState({ type:"bot", name:"", serial:"" });
+  const [confirmDel, setConfirmDel] = useState(false);
+  const typeIcon = (t) => t==="bot"?"bot":t==="lift"?"lift":"layers";
+  const add = async () => { if (!f.name.trim()) return; await api.createAsset(siteId, { type:f.type, name:f.name.trim(), serial:f.serial.trim()||"—" }); setF({ type:f.type, name:"", serial:"" }); assets.reload(); };
+  const remove = async (id) => { if (!confirm("Remove this asset and its history?")) return; await api.deleteAsset(siteId, id); assets.reload(); };
+  const removeSite = async () => { await api.deleteSite(siteId); onBack(); };
+  return html`<div>
+    <button onClick=${onBack} class="mb-3 text-sm text-muted hover:text-sub">← All locations</button>
+    ${site.loading ? html`<${Loading} what="Loading" />` : site.error ? html`<${ErrorBox} msg=${site.error} onRetry=${site.reload} />` : html`<div><h2 class="text-lg font-semibold">${site.data.name}</h2><p class="mb-4 text-xs text-muted">${site.data.timezone} ${site.data.notes?"· "+site.data.notes:""}</p></div>`}
+    <p class="mb-2 text-xs font-semibold uppercase tracking-wide text-muted">Assets</p>
+    ${assets.loading ? html`<${Loading} what="Loading assets" />` : assets.error ? html`<${ErrorBox} msg=${assets.error} onRetry=${assets.reload} />` : html`<div class="space-y-2">
+      ${assets.data.map((a) => html`<div key=${a.id} class="flex items-center gap-3 rounded-xl border border-line bg-surface px-4 py-3">
+        <span class="text-muted"><${Icon} n=${typeIcon(a.type)} s=18/></span>
+        <div class="min-w-0 flex-1"><div class="font-medium">${a.name}</div><div class="text-xs text-muted">${a.type} · ${a.serial}</div></div>
+        ${a.type!=="other" && html`<button onClick=${()=>remove(a.id)} class="text-muted hover:text-over"><${Icon} n="trash" s=16/></button>`}
+      </div>`)}</div>`}
+    <div class="mt-3 rounded-xl border border-line bg-surface p-4">
+      <div class="grid gap-3 sm:grid-cols-[1fr_1.4fr_1.4fr]">
+        <label class="block"><span class=${lbl}>Type</span><select class=${field} value=${f.type} onChange=${(e)=>setF({...f,type:e.target.value})}><option value="bot">bot</option><option value="lift">lift</option></select></label>
+        <${TextField} label="Name" value=${f.name} onInput=${(v)=>setF({...f,name:v})} placeholder="Bot 03"/>
+        <${TextField} label="Serial / asset ID" value=${f.serial} onInput=${(v)=>setF({...f,serial:v})} placeholder="LB-24-0003"/>
+      </div>
+      <button class=${primary+" mt-3"} onClick=${add}><span class="inline-flex items-center gap-1.5"><${Icon} n="plus" s=15/> Add asset</span></button>
+    </div>
+
+    <div class="mt-8">
+      <p class="mb-2 text-xs font-semibold uppercase tracking-wide text-muted">Checklists for this site</p>
+      <${SiteChecklists} siteId=${siteId} hasLayout=${site.data && site.data.has_layout} />
+    </div>
+
+    <div class="mt-8 border-t border-line pt-4">
+      ${!confirmDel ? html`<button onClick=${()=>setConfirmDel(true)} class="inline-flex items-center gap-1.5 text-sm text-over hover:brightness-110"><${Icon} n="trash" s=15/> Delete location</button>`
+        : html`<div class="rounded-xl border border-over/40 bg-over/10 p-4"><p class="text-sm text-over">Delete this location and <b>all</b> of its assets, history and reports? This can’t be undone.</p>
+          <div class="mt-3 flex gap-2"><button class=${btn+" bg-over text-white hover:brightness-110"} onClick=${removeSite}>Yes, delete permanently</button><button class=${ghost} onClick=${()=>setConfirmDel(false)}>Cancel</button></div></div>`}
+    </div>
+  </div>`;
+}
+
+function SiteChecklists({ siteId, hasLayout }) {
+  const q = useAsync(() => api.getSiteChecklists(siteId), [siteId]);
+  const [cl, setCl] = useState(null);
+  const [open, setOpen] = useState(null);
+  const [adding, setAdding] = useState(null); // asset type currently showing the add-item form
+  const [nf, setNf] = useState({ name:"", category:"Visual", frequency_unit:"month", frequency_every:1, photo_required:false });
+  useEffect(() => { if (q.data) setCl(q.data); }, [q.data]);
+  if (q.loading) return html`<${Loading} what="Loading checklists" />`;
+  if (q.error) return html`<${ErrorBox} msg=${q.error} onRetry=${q.reload} />`;
+  if (!cl) return null;
+
+  const types = ["bot", "lift"].concat(hasLayout ? ["other"] : []);
+  const patchLocal = (type, key, p) => setCl((c) => ({ ...c, [type]: { ...c[type], pms: c[type].pms.map((x)=>x.pm_key===key?{...x,...p}:x) } }));
+  const save = (type, key, body) => api.updateSitePm(siteId, type, key, body).then(()=>{ if(!cl[type].forked) q.reload(); }).catch((e)=>alert("Save failed: "+e.message));
+  const removeItem = async (type, key) => { if(!confirm("Remove this item from this site?")) return; try { await api.deleteSitePm(siteId, type, key); q.reload(); } catch(e){ alert("Remove failed: "+e.message); } };
+  const reset = async (type) => { if(!confirm("Reset this checklist to the global default? Site-specific changes will be lost.")) return; try { await api.resetSiteChecklist(siteId, type); q.reload(); } catch(e){ alert("Reset failed: "+e.message); } };
+  const addItem = async (type) => { if(!nf.name.trim()) return; try { await api.addSitePm(siteId, type, { ...nf, frequencyEvery:nf.frequency_every, frequencyUnit:nf.frequency_unit, photoRequired:nf.photo_required }); setNf({ name:"", category:"Visual", frequency_unit:"month", frequency_every:1, photo_required:false }); setAdding(null); q.reload(); } catch(e){ alert("Add failed: "+e.message); } };
+
+  return html`<div class="space-y-2">
+    ${types.map((type) => { const c = cl[type]; if (!c) return null; const isOpen = open===type; return html`
+      <div key=${type} class="overflow-hidden rounded-xl border border-line bg-surface">
+        <button onClick=${()=>setOpen(isOpen?null:type)} class="flex w-full items-center gap-2 px-4 py-3 text-left">
+          <span class="text-muted"><${Icon} n=${isOpen?"chevD":"chevR"} s=16/></span>
+          <span class="flex-1 font-medium">${c.label}</span>
+          <span class=${"rounded px-2 py-0.5 text-[11px] font-medium " + (c.forked ? "bg-brand/15 text-brand" : "bg-muted/20 text-muted")}>${c.forked ? "Custom" : "Global default"}</span>
+          <span class="text-xs text-muted">${c.pms.filter((p)=>p.active!==false).length}/${c.pms.length}</span>
+        </button>
+        ${isOpen && html`<div class="border-t border-line p-4">
+          ${!c.forked && html`<div class="mb-3 rounded-lg bg-brand/10 px-3 py-2 text-xs text-sub">This site uses the global checklist. Any change below creates a site-specific copy that no longer tracks the global template.</div>`}
+          <div class="space-y-2">${c.pms.map((pm) => html`<div key=${pm.pm_key} class=${"rounded-lg border p-3 " + (pm.active===false ? "border-line bg-surface2/40 opacity-60" : "border-line")}>
+            <div class="flex items-start gap-2">
+              <label class="mt-0.5 flex items-center" title="Assign to this site"><input type="checkbox" checked=${pm.active!==false} onChange=${(e)=>{patchLocal(type,pm.pm_key,{active:e.target.checked});save(type,pm.pm_key,{active:e.target.checked});}}/></label>
+              <div class="min-w-0 flex-1 text-sm font-medium">${pm.name}</div>
+              <span class=${"shrink-0 rounded px-2 py-0.5 text-[11px] " + (String(pm.category).includes("Visual")?"bg-brand/15 text-brand":"bg-muted/20 text-muted")}>${pm.category}</span>
+              <button onClick=${()=>removeItem(type,pm.pm_key)} class="text-muted hover:text-over"><${Icon} n="trash" s=15/></button>
+            </div>
+            <div class="mt-2 flex flex-wrap items-center gap-3 pl-6">
+              <label class="flex items-center gap-1.5 text-xs"><input type="checkbox" checked=${pm.photo_required} onChange=${(e)=>{patchLocal(type,pm.pm_key,{photo_required:e.target.checked});save(type,pm.pm_key,{photoRequired:e.target.checked});}}/> Photo required</label>
+              <label class="flex items-center gap-1.5 text-xs">Every <input class="w-14 rounded border border-line bg-surface2 px-2 py-1 no-spin" type="number" min="1" value=${pm.frequency_every} onInput=${(e)=>{const v=Math.max(1,+e.target.value||1);patchLocal(type,pm.pm_key,{frequency_every:v});save(type,pm.pm_key,{frequencyEvery:v});}}/>
+                <select class="rounded border border-line bg-surface2 px-2 py-1" value=${pm.frequency_unit} onChange=${(e)=>{patchLocal(type,pm.pm_key,{frequency_unit:e.target.value});save(type,pm.pm_key,{frequencyUnit:e.target.value});}}><option value="day">day(s)</option><option value="week">week(s)</option><option value="month">month(s)</option></select></label>
+            </div>
+            <div class="mt-2 pl-6"><input class=${field} value=${pm.sop_url||""} placeholder="SOP link (optional)" onInput=${(e)=>patchLocal(type,pm.pm_key,{sop_url:e.target.value})} onBlur=${(e)=>save(type,pm.pm_key,{sopUrl:e.target.value||null})}/></div>
+            <div class="mt-2 pl-6"><input class=${field} value=${pm.notes||""} placeholder="Site note for technicians (optional)" onInput=${(e)=>patchLocal(type,pm.pm_key,{notes:e.target.value})} onBlur=${(e)=>save(type,pm.pm_key,{notes:e.target.value})}/></div>
+          </div>`)}</div>
+          ${adding===type ? html`<div class="mt-3 rounded-lg border border-brand/40 p-3">
+            <div class="grid gap-2 sm:grid-cols-[2fr_1fr]">
+              <${TextField} label="Item name" value=${nf.name} onInput=${(v)=>setNf({...nf,name:v})} placeholder="New check…"/>
+              <label class="block"><span class=${lbl}>Category</span><select class=${field} value=${nf.category} onChange=${(e)=>setNf({...nf,category:e.target.value})}><option>Visual</option><option>Functional</option><option>Visual/Functional</option></select></label>
+            </div>
+            <div class="mt-2 flex flex-wrap items-center gap-3">
+              <label class="flex items-center gap-1.5 text-xs"><input type="checkbox" checked=${nf.photo_required} onChange=${(e)=>setNf({...nf,photo_required:e.target.checked})}/> Photo required</label>
+              <label class="flex items-center gap-1.5 text-xs">Every <input class="w-14 rounded border border-line bg-surface2 px-2 py-1 no-spin" type="number" min="1" value=${nf.frequency_every} onInput=${(e)=>setNf({...nf,frequency_every:Math.max(1,+e.target.value||1)})}/>
+                <select class="rounded border border-line bg-surface2 px-2 py-1" value=${nf.frequency_unit} onChange=${(e)=>setNf({...nf,frequency_unit:e.target.value})}><option value="day">day(s)</option><option value="week">week(s)</option><option value="month">month(s)</option></select></label>
+            </div>
+            <div class="mt-2 flex gap-2"><button class=${primary} onClick=${()=>addItem(type)}>Add item</button><button class=${ghost} onClick=${()=>setAdding(null)}>Cancel</button></div>
+          </div>` : html`<div class="mt-3 flex items-center justify-between">
+            <button onClick=${()=>setAdding(type)} class="flex items-center gap-1.5 text-sm text-sub hover:text-ink"><${Icon} n="plus" s=15/> Add checklist item</button>
+            ${c.forked && html`<button onClick=${()=>reset(type)} class="text-xs text-muted hover:text-over">Reset to global default</button>`}
+          </div>`}
+        </div>`}
+      </div>`; })}
+  </div>`;
+}
+
+function ChecklistEditor() {
+  const q = useAsync(() => api.getChecklists(), []);
+  const [cl, setCl] = useState(null);
+  const [open, setOpen] = useState("bot");
+  useEffect(() => { if (q.data) setCl(q.data); }, [q.data]);
+  if (q.loading) return html`<${Loading} what="Loading checklists" />`;
+  if (q.error) return html`<${ErrorBox} msg=${q.error} onRetry=${q.reload} />`;
+  if (!cl) return null;
+  const patchPm = (type, key, p) => setCl((c) => ({ ...c, [type]: { ...c[type], pms: c[type].pms.map((x)=>x.pm_key===key?{...x,...p}:x) } }));
+  const savePm = (type, key, body) => api.updatePm(type, key, body).catch((e)=>alert("Save failed: "+e.message));
+  const patchDefault = (type, url) => setCl((c) => ({ ...c, [type]: { ...c[type], defaultSopUrl: url } }));
+  return html`<div class="space-y-3">
+    <p class="text-xs text-muted">Global checklists (same at every site). Changes save automatically. Per-site editing and add/remove items arrive in the next update.</p>
+    ${["bot","lift","other"].map((type) => { const c = cl[type]; const isOpen = open===type; return html`
+      <div key=${type} class="overflow-hidden rounded-xl border border-line bg-surface">
+        <button onClick=${()=>setOpen(isOpen?null:type)} class="flex w-full items-center gap-2 px-4 py-3 text-left">
+          <span class="text-muted"><${Icon} n=${isOpen?"chevD":"chevR"} s=16/></span><span class="flex-1 font-medium">${c.label}</span><span class="text-xs text-muted">${c.pms.length} PMs</span></button>
+        ${isOpen && html`<div class="border-t border-line p-4">
+          <div class="mb-3"><span class=${lbl}>Default SOP link for this checklist</span><input class=${field} value=${c.defaultSopUrl||""} onInput=${(e)=>patchDefault(type,e.target.value)} onBlur=${(e)=>api.updateChecklistDefault(type,e.target.value||null).catch((x)=>alert("Save failed: "+x.message))}/></div>
+          <div class="space-y-3">${c.pms.map((pm) => html`<div key=${pm.pm_key} class="rounded-lg border border-line p-3">
+            <div class="flex items-start justify-between gap-2"><div class="text-sm font-medium">${pm.name}</div>
+              <span class=${"shrink-0 rounded px-2 py-0.5 text-[11px] " + (pm.category.includes("Visual")?"bg-brand/15 text-brand":"bg-muted/20 text-muted")}>${pm.category}</span></div>
+            <div class="mt-2 flex flex-wrap items-center gap-3">
+              <label class="flex items-center gap-1.5 text-xs"><input type="checkbox" checked=${pm.photo_required} onChange=${(e)=>{patchPm(type,pm.pm_key,{photo_required:e.target.checked});savePm(type,pm.pm_key,{photoRequired:e.target.checked});}}/> Photo required</label>
+              <label class="flex items-center gap-1.5 text-xs">Every <input class="w-14 rounded border border-line bg-surface2 px-2 py-1 no-spin" type="number" min="1" value=${pm.frequency_every} onInput=${(e)=>{const v=Math.max(1,+e.target.value||1);patchPm(type,pm.pm_key,{frequency_every:v});savePm(type,pm.pm_key,{frequencyEvery:v});}}/>
+                <select class="rounded border border-line bg-surface2 px-2 py-1" value=${pm.frequency_unit} onChange=${(e)=>{patchPm(type,pm.pm_key,{frequency_unit:e.target.value});savePm(type,pm.pm_key,{frequencyUnit:e.target.value});}}><option value="day">day(s)</option><option value="week">week(s)</option><option value="month">month(s)</option></select></label>
+            </div>
+            <div class="mt-2"><span class="text-[11px] text-muted">SOP override (blank = checklist default)</span><input class=${field} value=${pm.sop_url||""} placeholder=${c.defaultSopUrl||""} onInput=${(e)=>patchPm(type,pm.pm_key,{sop_url:e.target.value})} onBlur=${(e)=>savePm(type,pm.pm_key,{sopUrl:e.target.value||null})}/></div>
+          </div>`)}</div>
+        </div>`}
+      </div>`; })}
+  </div>`;
+}
+
+/* ---------------- TECHNICIAN ---------------------------------------------- */
+function Tech() {
+  const [screen, setScreen] = useState("pick");
+  const [site, setSite] = useState({ id:null, name:"" });
+  if (screen==="report") return html`<${Report} siteId=${site.id} siteName=${site.name} onDone=${()=>setScreen("pick")} />`;
+  if (screen==="history") return html`<${History} siteId=${site.id} siteName=${site.name} onBack=${()=>setScreen("histpick")} />`;
+  if (screen==="histpick") return html`<${SitePicker} title="Past reports — pick a location" onBack=${()=>setScreen("pick")} onPick=${(s)=>{ setSite(s); setScreen("history"); }} />`;
+  return html`<div>
+    <div class="mb-4 flex items-center justify-between">
+      <p class="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted"><${Icon} n="map" s=14/> Pick a location</p>
+      <button onClick=${()=>setScreen("histpick")} class="flex items-center gap-1.5 text-sm text-muted hover:text-sub"><${Icon} n="history" s=15/> Past reports</button>
+    </div>
+    <${SitePicker} onPick=${(s)=>{ setSite(s); setScreen("report"); }} />
+  </div>`;
+}
+
+function SitePicker({ onPick, onBack, title }) {
+  const sites = useAsync(() => api.listSites(), []);
+  return html`<div>
+    ${title && html`<button onClick=${onBack} class="mb-3 text-sm text-muted hover:text-sub">← Back</button>`}
+    ${title && html`<h2 class="mb-4 text-lg font-semibold">${title}</h2>`}
+    ${sites.loading ? html`<${Loading} what="Loading locations" />` : sites.error ? html`<${ErrorBox} msg=${sites.error} onRetry=${sites.reload} />` : html`<div class="space-y-2">${sites.data.map((s)=>html`<button key=${s.id} onClick=${()=>onPick({id:s.id,name:s.name})} class="flex w-full items-center gap-3 rounded-xl border border-line bg-surface px-4 py-4 text-left hover:border-brand/50">
+      <div class="min-w-0 flex-1"><div class="font-medium">${s.name}</div><div class="mt-0.5 text-xs text-muted">${s.bots} bots · ${s.lifts} lifts</div></div>
+      <span class="text-muted"><${Icon} n="chevR" s=18/></span></button>`)}</div>`}
+  </div>`;
+}
+
+function Report({ siteId, siteName, onDone }) {
+  const due = useAsync(() => api.getDue(siteId), [siteId]);
+  const [rows, setRows] = useState(null);
+  const [tech, setTech] = useState("");
+  const [date, setDate] = useState(todayISO());
+  const [timeLog, setTimeLog] = useState("");
+  const [safety, setSafety] = useState([false,false,false]);
+  const [submitting, setSubmitting] = useState(false);
+  const [done, setDone] = useState(false);
+  const SAFETY = ["Machine powered down and LOTO applied (if required)?","Required PPE (Gloves, Safety Shoes, Glasses) worn?","Work area clear of debris and unauthorized personnel?"];
+  useEffect(() => { if (due.data) setRows(due.data.map((r)=>({ ...r, status:"pending", notes:"", photo:null }))); }, [due.data]);
+  const upd = (i, p) => setRows((rs)=>rs.map((r,j)=>j===i?{...r,...p}:r));
+  const counts = useMemo(() => (rows||[]).reduce((a,r)=>{a[r.status]++;return a;},{pending:0,flag:0,done:0}), [rows]);
+  const canSubmit = rows && tech.trim() && rows.every((r)=>!(r.status==="done"&&r.photoRequired&&!r.photo)) && rows.every((r)=>!(r.status==="flag"&&!r.notes.trim()));
+  const submit = async () => { setSubmitting(true); await api.submitReport(siteId, { technician:tech.trim(), date, timeLog:timeLog.trim(), safety, items:rows.map((r)=>({assetId:r.assetId,assetName:r.assetName,pmKey:r.pmKey,pmName:r.pmName,status:r.status,notes:r.notes,photo:r.photo,cyclesMissed:r.cyclesMissed})) }); setDone(true); };
+  if (done) return html`<div class="mx-auto max-w-md rounded-xl border border-done/40 bg-done/10 p-8 text-center">
+    <div class="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-done/20 text-done"><${Icon} n="check" s=24/></div>
+    <p class="font-semibold text-done">Report submitted</p><p class="mt-1 text-sm text-muted">Saved to the shared record for ${siteName}.</p>
+    <button class=${primary+" mt-4"} onClick=${onDone}>Done</button></div>`;
+  return html`<div>
+    <button onClick=${onDone} class="mb-3 text-sm text-muted hover:text-sub">← Cancel</button>
+    <div class="mb-1 text-[10px] uppercase tracking-widest text-muted">CHL-MTN-MTNCHL-01</div>
+    <h2 class="mb-4 text-lg font-semibold">New PM report — ${siteName}</h2>
+    <div class="mb-4 grid grid-cols-2 gap-3 rounded-xl border border-line bg-surface p-4 sm:grid-cols-4">
+      <label class="block"><span class=${lbl}>Date <span class="text-over">*</span></span><input type="date" class=${field} value=${date} onInput=${(e)=>setDate(e.target.value)}/></label>
+      <label class="block"><span class=${lbl}>Location</span><input class=${field+" opacity-70"} value=${siteName} disabled/></label>
+      <${TextField} label="Technician" req=${true} value=${tech} onInput=${setTech} placeholder="Your name"/>
+      <${TextField} label="Time log (optional)" value=${timeLog} onInput=${setTimeLog} placeholder="45 min"/>
+    </div>
+    <div class="mb-4 rounded-xl border border-line bg-surface p-4"><p class="mb-2 text-xs font-semibold uppercase tracking-wide text-muted">Before you start</p>
+      ${SAFETY.map((s,i)=>html`<label key=${i} class="flex items-start gap-2 py-1 text-sm"><input type="checkbox" class="mt-1" checked=${safety[i]} onChange=${(e)=>setSafety(safety.map((v,j)=>j===i?e.target.checked:v))}/> <span>${s}</span></label>`)}
+    </div>
+    ${due.loading ? html`<${Loading} what="Loading what’s due" />` : due.error ? html`<${ErrorBox} msg=${due.error} onRetry=${due.reload} />` : !rows||rows.length===0 ? html`<div class="rounded-xl border border-dashed border-line bg-surface p-8 text-center text-sm text-muted">Nothing due within the next 7 days.</div>`
+      : html`<div>
+        <div class="mb-3 flex items-center gap-2 rounded-lg bg-brand/15 px-3 py-2 text-sm text-brand"><${Icon} n="arrow" s=16/> ${rows.length} PMs due — most overdue first · repeats collapsed</div>
+        <div class="space-y-2">${rows.map((r,i)=>html`<${ReportRow} key=${r.assetId+r.pmKey} r=${r} onStatus=${(s)=>upd(i,{status:s})} onNotes=${(n)=>upd(i,{notes:n})} onPhoto=${(p)=>upd(i,{photo:p})} />`)}</div>
+        <div class="mt-5 flex flex-wrap items-center justify-between gap-3 border-t border-line pt-4">
+          <span class="text-sm text-muted">${counts.done} done · ${counts.flag} flagged · ${counts.pending} not completed</span>
+          <button class=${primary} disabled=${!canSubmit||submitting} onClick=${submit}>${submitting?"Submitting…":"Submit report"}</button></div>
+        ${!canSubmit && html`<p class="mt-2 text-right text-xs text-muted">${!tech.trim()?"Enter your name. ":""}Flagged items need a note; photo-required items need a photo before Done.</p>`}
+      </div>`}
+  </div>`;
+}
+
+function ReportRow({ r, onStatus, onNotes, onPhoto }) {
+  const [open, setOpen] = useState((r.label.tone==="over"||r.label.tone==="red"));
+  const chip = toneChip[r.label.tone] || toneChip.muted;
+  const stateBtn = (key, label, activeCls) => html`<button onClick=${()=>onStatus(key)} class=${"rounded-lg border px-3 py-1.5 text-xs font-medium " + (r.status===key?activeCls:"border-line text-muted hover:bg-surface2")}>${label}</button>`;
+  const photoFile = (e) => { const f = e.target.files && e.target.files[0]; if (f) onPhoto({ name:f.name }); };
+  return html`<div class=${"overflow-hidden rounded-xl border bg-surface " + ((r.label.tone==="over"||r.label.tone==="red")&&r.status==="pending"?"border-over/40":"border-line")}>
+    <button onClick=${()=>setOpen(!open)} class="flex w-full items-center gap-2 px-3 py-3 text-left">
+      <span class="text-muted"><${Icon} n=${open?"chevD":"chevR"} s=16/></span>
+      <span class="shrink-0 rounded bg-surface2 px-2 py-0.5 text-[11px] font-medium text-sub">${r.assetName}</span>
+      <span class="min-w-0 flex-1 truncate text-sm font-medium">${r.pmName}</span>
+      <span class=${"shrink-0 rounded px-2 py-0.5 text-[11px] font-semibold " + chip}>${r.label.text}</span></button>
+    ${open && html`<div class="border-t border-line px-3 py-3">
+      <div class="flex flex-wrap items-center gap-2">
+        ${stateBtn("pending","Not completed","bg-surface2 text-ink border-line")}
+        ${stateBtn("flag","⚑ Flag","bg-flag/20 text-flag border-flag/50")}
+        ${stateBtn("done","✓ Done","bg-done/20 text-done border-done/50")}
+        <label class=${"flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium cursor-pointer " + (r.photo?"border-done/60 text-done":"border-line text-muted hover:bg-surface2")}>
+          <${Icon} n="camera" s=14/> ${r.photo?"Photo ✓":"Photo"}${r.photoRequired?html` <span class="text-over">*</span>`:""}
+          <input type="file" accept="image/*" capture="environment" class="hidden" onChange=${photoFile}/></label>
+        <a href=${r.sop} target="_blank" rel="noopener" class="ml-auto flex items-center gap-1 self-center text-xs text-brand hover:underline">SOP <${Icon} n="link" s=13/></a>
+      </div>
+      ${r.photo && html`<p class="mt-2 text-[11px] text-muted">Captured: ${r.photo.name}</p>`}
+      ${r.siteNote && html`<p class="mt-2 text-[11px] text-sub">Site note: ${r.siteNote}</p>`}
+      ${r.cyclesMissed>=2 && html`<p class="mt-2 text-[11px] text-over">${r.cyclesMissed} monthly cycles outstanding — completing clears the backlog and resets the clock.</p>`}
+      <textarea class=${field+" mt-2 "+(r.status==="flag"?"border-flag/60":"")} rows="2" value=${r.notes} onInput=${(e)=>onNotes(e.target.value)} placeholder=${r.status==="flag"?"What’s wrong, and where on the asset? (required)":r.status==="pending"?"Reason not completed (recommended)":"Notes (optional)"}></textarea>
+    </div>`}
+  </div>`;
+}
+
+function History({ siteId, siteName, onBack }) {
+  const reports = useAsync(() => api.listReports(siteId), [siteId]);
+  const [openId, setOpenId] = useState(null);
+  const [details, setDetails] = useState({});
+  const toggle = async (id) => { if (openId===id) { setOpenId(null); return; } setOpenId(id); if (!details[id]) { const d = await api.getReport(id); setDetails((m)=>({ ...m, [id]:d })); } };
+  return html`<div>
+    <button onClick=${onBack} class="mb-3 text-sm text-muted hover:text-sub">← Back</button>
+    <h2 class="mb-4 text-lg font-semibold">Past reports — ${siteName}</h2>
+    ${reports.loading ? html`<${Loading} what="Loading reports" />` : reports.error ? html`<${ErrorBox} msg=${reports.error} onRetry=${reports.reload} />` : reports.data.length===0 ? html`<div class="rounded-xl border border-dashed border-line bg-surface p-8 text-center text-sm text-muted">No reports for this location yet.</div>`
+      : html`<div class="space-y-2">${reports.data.map((rep)=>{ const isOpen=openId===rep.id; const d=details[rep.id]; return html`
+        <div key=${rep.id} class="overflow-hidden rounded-xl border border-line bg-surface">
+          <button onClick=${()=>toggle(rep.id)} class="flex w-full items-center gap-2 px-4 py-3 text-left">
+            <span class="text-muted"><${Icon} n=${isOpen?"chevD":"chevR"} s=16/></span>
+            <div class="min-w-0 flex-1"><div class="text-sm font-medium">${fmt(rep.report_date)}</div><div class="text-xs text-muted">${rep.technician}${rep.time_log?" · "+rep.time_log:""}</div></div></button>
+          ${isOpen && html`<div class="border-t border-line">${!d ? html`<div class="p-4 text-sm text-muted">Loading…</div>`
+            : html`<div class="divide-y divide-line">${d.items.map((it)=>html`<div class="flex items-start gap-2 px-4 py-2 text-sm">
+                <span class=${"mt-0.5 shrink-0 rounded px-2 py-0.5 text-[11px] font-semibold " + (it.status==="done"?toneChip.done:it.status==="flag"?toneChip.amber:toneChip.muted)}>${it.status==="done"?"OK":it.status==="flag"?"FLAG":"—"}</span>
+                <div class="min-w-0 flex-1"><span class="text-muted">${it.asset_name}:</span> ${it.pm_name}
+                  ${it.notes && html`<div class="text-xs text-muted">“${it.notes}”</div>`}
+                  ${it.photo_ref && html`<div class="text-[11px] text-muted">photo: ${it.photo_ref.name||"attached"}</div>`}
+                </div></div>`)}</div>`}
+          </div>`}
+        </div>`; })}</div>`}
+  </div>`;
+}
+
+render(html`<${Root} />`, document.getElementById("app"));
+</script>
+</body>
+</html>
